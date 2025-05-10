@@ -1,4 +1,4 @@
-# Cobalt
+# Cobalt (with added 32 bit support for the online tests)
 There is a better alternative for other platforms but it is only for private servers (and limited versions) available at [Sinum](https://github.com/projectnovafn/Sinum)
 # Private server for latest does not work because of EOS (I believe added in S22 or something?)
 SSL Bypass for Fortnite.<br>
