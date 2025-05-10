@@ -198,26 +198,33 @@ namespace Memcury
         auto MemcuryGlobalHandler(EXCEPTION_POINTERS* ExceptionInfo) -> long
         {
             auto [dllStart, dllEnd] = Util::GetModuleStartAndEnd();
-
             if constexpr (mode == ExceptionMode::CatchDllExceptionsOnly)
             {
+#ifdef _WIN64
                 if (!Util::IsInRange(ExceptionInfo->ContextRecord->Rip, dllStart, dllEnd))
+#else
+                if (!Util::IsInRange(ExceptionInfo->ContextRecord->Eip, dllStart, dllEnd))
+#endif
                 {
                     return EXCEPTION_CONTINUE_SEARCH;
                 }
             }
-
+#ifdef _WIN64
             auto message = std::format("Memcury caught an exception at [{:x}]\nPress Yes if you want the address to be copied to your clipboard", ExceptionInfo->ContextRecord->Rip);
+#else
+            auto message = std::format("Memcury caught an exception at [{:x}]\nPress Yes if you want the address to be copied to your clipboard", ExceptionInfo->ContextRecord->Eip);
+#endif
             if (MessageBoxA(nullptr, message.c_str(), "Error", MB_ICONERROR | MB_YESNO) == IDYES)
             {
+#ifdef _WIN64
                 std::string clip = std::format("{:x}", ExceptionInfo->ContextRecord->Rip);
+#else
+                std::string clip = std::format("{:x}", ExceptionInfo->ContextRecord->Eip);
+#endif
                 Util::CopyToClipboard(clip);
             }
-
             PrintStack(ExceptionInfo->ContextRecord);
-
             FreezeCurrentThread();
-
             return EXCEPTION_EXECUTE_HANDLER;
         }
 
@@ -1115,6 +1122,7 @@ namespace Memcury
 
         void WriteAbsoluteJump(void* jumpLocation, void* destination)
         {
+#ifdef _WIN64
             uint8_t absJumpInstructions[] = {
                 ASM::Mnemonic("CMOVNS"), 0xBA, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // mov r10, addr
                 0x41, 0xFF, 0xE2 // jmp r10
@@ -1123,6 +1131,17 @@ namespace Memcury
             auto destination64 = (uint64_t)destination;
             memcpy(&absJumpInstructions[2], &destination64, sizeof(destination64));
             memcpy(jumpLocation, absJumpInstructions, sizeof(absJumpInstructions));
+#else
+            // 32-bit absolute jump
+            uint8_t absJumpInstructions[] = {
+                0xB8, 0x00, 0x00, 0x00, 0x00,  // mov eax, addr
+                0xFF, 0xE0                     // jmp eax
+            };
+
+            auto destination32 = (uint32_t)destination;
+            memcpy(&absJumpInstructions[1], &destination32, sizeof(destination32));
+            memcpy(jumpLocation, absJumpInstructions, sizeof(absJumpInstructions));
+#endif
         }
 
         uintptr_t PrepareRestore()
@@ -1268,15 +1287,22 @@ namespace Memcury
         {
             if (Exception->ExceptionRecord->ExceptionCode == STATUS_GUARD_PAGE_VIOLATION)
             {
+#ifdef _WIN64
                 auto Itr = std::find_if(Hooks.begin(), Hooks.end(), [Rip = Exception->ContextRecord->Rip](const HOOK_INFO& Hook)
                     { return Hook.Original == (void*)Rip; });
+#else
+                auto Itr = std::find_if(Hooks.begin(), Hooks.end(), [Eip = Exception->ContextRecord->Eip](const HOOK_INFO& Hook)
+                    { return Hook.Original == (void*)Eip; });
+#endif
                 if (Itr != Hooks.end())
                 {
+#ifdef _WIN64
                     Exception->ContextRecord->Rip = (uintptr_t)Itr->Detour;
+#else
+                    Exception->ContextRecord->Eip = (uintptr_t)Itr->Detour;
+#endif
                 }
-
                 Exception->ContextRecord->EFlags |= 0x100; // SINGLE_STEP_FLAG
-
                 return EXCEPTION_CONTINUE_EXECUTION;
             }
             else if (Exception->ExceptionRecord->ExceptionCode == STATUS_SINGLE_STEP)
@@ -1287,10 +1313,8 @@ namespace Memcury
                     DWORD dwOldProtect;
                     VirtualProtect(Hook.Original, 1, PAGE_EXECUTE_READ | PAGE_GUARD, &dwOldProtect);
                 }
-
                 return EXCEPTION_CONTINUE_EXECUTION;
             }
-
             return EXCEPTION_CONTINUE_SEARCH;
         }
 

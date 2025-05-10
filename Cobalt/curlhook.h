@@ -2,6 +2,7 @@
 
 #include <Windows.h>
 #include <regex>
+#include <string>
 
 #include "memcury.h"
 #include "settings.h"
@@ -80,46 +81,71 @@ inline CURLcode CurlEasySetOptDetour(struct Curl_easy* data, CURLoption tag, ...
 		std::cout << "URL: " << uri.Host << uri.Path << '\n';
 
 #if defined(URL_HOST) && defined(URL_PROTOCOL) && defined(URL_PORT)
-		if (uri.Host.ends_with(XOR("ol.epicgames.com"))
-			|| uri.Host.ends_with(XOR("epicgames.dev")) // wooo eos
-			|| uri.Host.ends_with(XOR("ol.epicgames.net")) // i forgor what endpoint this was for
-			|| uri.Host.ends_with(XOR(".akamaized.net"))
-			|| uri.Host.ends_with(XOR("on.epicgames.com"))
-			|| uri.Host.ends_with(XOR("game-social.epicgames.com"))
-			|| uri.Host.contains(XOR("superawesome.com"))
-			|| uri.Host.contains(XOR("ak.epicgames.com")))
-		{
-			if (CobaltUsage == ECobaltUsage::Private)
-			{
-				url = Uri::CreateUri(URL_PROTOCOL, URL_HOST, URL_PORT, uri.Path, uri.QueryString);
-			}
-			else if (CobaltUsage == ECobaltUsage::Hybrid)
-			{
-				if (uri.Path.contains("/fortnite/api/v2/versioncheck/")) {
-					url = Uri::CreateUri(URL_PROTOCOL, URL_HOST, URL_PORT, uri.Path, uri.QueryString);
-				}
-				else if (uri.Path.contains("/fortnite/api/game/v2/profile")) {
-					url = Uri::CreateUri(URL_PROTOCOL, URL_HOST, URL_PORT, uri.Path, uri.QueryString);
-				}
-				else if (uri.Path.contains("/content/api/pages/fortnite-game")) {
-					url = Uri::CreateUri(URL_PROTOCOL, URL_HOST, URL_PORT, uri.Path, uri.QueryString);
-				}
-				else if (uri.Path.contains("/affiliate/api/public/affiliates/slug")) {
-					url = Uri::CreateUri(URL_PROTOCOL, URL_HOST, URL_PORT, uri.Path, uri.QueryString);
-				}
-				else if (uri.Path.contains("/socialban/api/public/v1")) {
-					url = Uri::CreateUri(URL_PROTOCOL, URL_HOST, URL_PORT, uri.Path, uri.QueryString);
-				}
-				else if (uri.Path.contains("/fortnite/api/cloudstorage/system")) {
-					url = Uri::CreateUri(URL_PROTOCOL, URL_HOST, URL_PORT, uri.Path, uri.QueryString);
-				}
-			}
-		}
-
+        if (uri.Host.ends_with(XOR("ol.epicgames.com"))
+            || uri.Host.ends_with(XOR("epicgames.dev")) // wooo eos
+            || uri.Host.ends_with(XOR("ol.epicgames.net")) // i forgor what endpoint this was for
+            || uri.Host.ends_with(XOR(".akamaized.net"))
+            || uri.Host.ends_with(XOR("on.epicgames.com"))
+            || uri.Host.ends_with(XOR("game-social.epicgames.com"))
+#ifdef _WIN64
+            || uri.Host.contains(XOR("superawesome.com"))
+            || uri.Host.contains(XOR("ak.epicgames.com")))
+#else
+            || uri.Host.find(XOR("superawesome.com")) != std::string::npos
+            || uri.Host.find(XOR("ak.epicgames.com")) != std::string::npos)
+#endif
+        {
+            if (CobaltUsage == ECobaltUsage::Private)
+            {
+                url = Uri::CreateUri(URL_PROTOCOL, URL_HOST, URL_PORT, uri.Path, uri.QueryString);
+            }
+            else if (CobaltUsage == ECobaltUsage::Hybrid)
+            {
+#ifdef _WIN64
+                if (uri.Path.contains("/fortnite/api/v2/versioncheck/")) {
+                    url = Uri::CreateUri(URL_PROTOCOL, URL_HOST, URL_PORT, uri.Path, uri.QueryString);
+                }
+                else if (uri.Path.contains("/fortnite/api/game/v2/profile")) {
+                    url = Uri::CreateUri(URL_PROTOCOL, URL_HOST, URL_PORT, uri.Path, uri.QueryString);
+                }
+                else if (uri.Path.contains("/content/api/pages/fortnite-game")) {
+                    url = Uri::CreateUri(URL_PROTOCOL, URL_HOST, URL_PORT, uri.Path, uri.QueryString);
+                }
+                else if (uri.Path.contains("/affiliate/api/public/affiliates/slug")) {
+                    url = Uri::CreateUri(URL_PROTOCOL, URL_HOST, URL_PORT, uri.Path, uri.QueryString);
+                }
+                else if (uri.Path.contains("/socialban/api/public/v1")) {
+                    url = Uri::CreateUri(URL_PROTOCOL, URL_HOST, URL_PORT, uri.Path, uri.QueryString);
+                }
+                else if (uri.Path.contains("/fortnite/api/cloudstorage/system")) {
+                    url = Uri::CreateUri(URL_PROTOCOL, URL_HOST, URL_PORT, uri.Path, uri.QueryString);
+                }
+#else
+                if (uri.Path.find("/fortnite/api/v2/versioncheck/") != std::string::npos) {
+                    url = Uri::CreateUri(URL_PROTOCOL, URL_HOST, URL_PORT, uri.Path, uri.QueryString);
+                }
+                else if (uri.Path.find("/fortnite/api/game/v2/profile") != std::string::npos) {
+                    url = Uri::CreateUri(URL_PROTOCOL, URL_HOST, URL_PORT, uri.Path, uri.QueryString);
+                }
+                else if (uri.Path.find("/content/api/pages/fortnite-game") != std::string::npos) {
+                    url = Uri::CreateUri(URL_PROTOCOL, URL_HOST, URL_PORT, uri.Path, uri.QueryString);
+                }
+                else if (uri.Path.find("/affiliate/api/public/affiliates/slug") != std::string::npos) {
+                    url = Uri::CreateUri(URL_PROTOCOL, URL_HOST, URL_PORT, uri.Path, uri.QueryString);
+                }
+                else if (uri.Path.find("/socialban/api/public/v1") != std::string::npos) {
+                    url = Uri::CreateUri(URL_PROTOCOL, URL_HOST, URL_PORT, uri.Path, uri.QueryString);
+                }
+                else if (uri.Path.find("/fortnite/api/cloudstorage/system") != std::string::npos) {
+                    url = Uri::CreateUri(URL_PROTOCOL, URL_HOST, URL_PORT, uri.Path, uri.QueryString);
+                }
+#endif
+            }
+        }
 #endif
 
 		result = CurlSetOpt_(data, tag, url.c_str());
-	}	
+	}
 
 	else
 	{
